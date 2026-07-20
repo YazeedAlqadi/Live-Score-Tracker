@@ -1,0 +1,45 @@
+[
+  {
+    "id": "m1",
+    "league": "La Liga · Matchday 4",
+    "status": "LIVE",
+    "minute": 67,
+    "homeTeam": "Real Madrid",
+    "homeCrest": "RM",
+    "awayTeam": "Barcelona",
+    "awayCrest": "BAR",
+    "homeScore": 2,
+    "awayScore": 1,
+    "venue": "Santiago Bernabéu",
+    "lastEvent": "64' Mbappé"
+  },
+  {
+    "id": "m2",
+    "league": "Premier League · Matchday 6",
+    "status": "LIVE",
+    "minute": 23,
+    "homeTeam": "Man City",
+    "homeCrest": "MCI",
+    "awayTeam": "Arsenal",
+    "awayCrest": "ARS",
+    "homeScore": 0,
+    "awayScore": 0,
+    "venue": "Etihad Stadium",
+    "lastEvent": null
+  },
+  {
+    "id": "m3",
+    "league": "Premier League · Matchday 6",
+    "status": "SCHEDULED",
+    "minute": null,
+    "homeTeam": "Liverpool",
+    "homeCrest": "LIV",
+    "awayTeam": "Chelsea",
+    "awayCrest": "CHE",
+    "homeScore": null,
+    "awayScore": null,
+    "venue": "Anfield",
+    "kickoff": "20:00"
+  }
+]
+

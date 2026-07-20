@@ -1,0 +1,15 @@
+{
+  "name": "live-score-tracker",
+  "version": "1.0.0",
+  "description": "Live football score tracker with SSE updates",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-fetch": "^2.7.0",
+    "dotenv": "^16.4.5"
+  }
+}

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Score Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark" id="connection-dot"></div>
+    <h1>LIVE<span>SCORE</span></h1>
+  </div>
+</header>
+
+<main>
+  <div id="match-list"></div>
+  <div id="empty-state" class="empty-state" style="display:none;">
+    No matches to show right now.
+  </div>
+</main>
+
+<footer id="status-footer">CONNECTING…</footer>
+<footer id="status-footer">
+  Built and designed by Yazeed Alqadi <br>
+  All rights reserved. ©
+  </footer>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+:root{
+  --navy-deep:#0B0E1A;
+  --navy-panel:#131729;
+  --navy-panel-2:#1B2038;
+  --purple:#8B5CF6;
+  --live-red:#FF4757;
+  --goal-green:#22C55E;
+  --text-main:#EDEBF7;
+  --text-dim:#8B87A6;
+  --border:#252B45;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:var(--navy-deep);
+  color:var(--text-main);
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+  padding:0 0 60px;
+}
+header{
+  padding:28px 20px 20px;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg, rgba(139,92,246,0.08), transparent);
+}
+.brand{ display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+.brand-mark{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--purple);
+  box-shadow:0 0 12px var(--purple);
+  transition:background .3s, box-shadow .3s;
+}
+.brand-mark.disconnected{ background:var(--text-dim); box-shadow:none; }
+.brand h1{ font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:1.5px; }
+.brand span{ color:var(--purple); }
+
+.filters{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
+.filter-chip{
+  font-size:13px; font-weight:500; padding:7px 14px; border-radius:20px;
+  border:1px solid var(--border); color:var(--text-dim); white-space:nowrap;
+  flex-shrink:0; cursor:pointer; user-select:none;
+}
+.filter-chip.active{ background:var(--purple); border-color:var(--purple); color:#fff; }
+
+main{ padding:20px 16px; max-width:480px; margin:0 auto; }
+
+.section-label{
+  font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:2px;
+  text-transform:uppercase; color:var(--text-dim); margin:22px 0 10px 4px;
+}
+
+.match-card{
+  background:var(--navy-panel); border:1px solid var(--border); border-radius:14px;
+  padding:16px; margin-bottom:12px; position:relative; overflow:hidden;
+  transition:border-color .2s;
+}
+.match-card.live{ border-color:rgba(255,71,87,0.35); }
+.match-card.live::before{
+  content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--live-red);
+}
+
+.card-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+.league-tag{ font-size:11.5px; color:var(--text-dim); font-weight:500; }
+.status-live{
+  display:flex; align-items:center; gap:6px; font-family:'JetBrains Mono',monospace;
+  font-size:12px; color:var(--live-red); font-weight:500;
+}
+.pulse-dot{ width:6px; height:6px; border-radius:50%; background:var(--live-red); animation:pulse 1.4s ease-in-out infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.4;transform:scale(1.4);} }
+.status-ft{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-dim); font-weight:500; }
+
+.teams-row{ display:flex; align-items:center; justify-content:space-between; }
+.team{ display:flex; align-items:center; gap:10px; width:38%; }
+.team.right{ flex-direction:row-reverse; text-align:right; }
+.crest{
+  width:30px; height:30px; border-radius:50%; background:var(--navy-panel-2);
+  border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; color:var(--purple); flex-shrink:0;
+}
+.team-name{ font-size:14px; font-weight:600; line-height:1.2; }
+
+.score-block{
+  font-family:'Bebas Neue',sans-serif; font-size:32px; letter-spacing:2px;
+  display:flex; align-items:center; gap:10px;
+}
+.score-block .dash{ color:var(--text-dim); font-size:20px; }
+.score-block .scored{ color:var(--goal-green); }
+.score-block.vs{ font-size:18px; color:var(--text-dim); }
+
+.card-bottom{
+  margin-top:12px; padding-top:10px; border-top:1px solid var(--border);
+  display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-dim);
+}
+.goal-flash{ color:var(--goal-green); font-weight:500; }
+
+.empty-state{
+  text-align:center; color:var(--text-dim); font-size:13px; padding:40px 0;
+}
+
+footer{
+  text-align:center; color:var(--text-dim); font-size:11px;
+  font-family:'JetBrains Mono',monospace; margin-top:30px; letter-spacing:1px;
+}
+
+/* Brief highlight flash when a score changes */
+@keyframes score-flash{
+  0%{ background:rgba(34,197,94,0.25); }
+  100%{ background:transparent; }
+}
+.match-card.just-updated{ animation:score-flash 1.2s ease-out; }
