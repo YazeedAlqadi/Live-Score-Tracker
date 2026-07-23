@@ -47,10 +47,10 @@ function normalizeMatch(ev) {
       : (ev.statusTime || null),
     homeTeam: ev.homeTeam?.name || 'Home',
     homeCrest: (ev.homeTeam?.shortName || ev.homeTeam?.name || 'HOM').slice(0, 3).toUpperCase(),
-    homeLogo: ev.homeTeam?.id ? `https://api.sofascore.com/api/v1/team/${ev.homeTeam.id}/image` : null,
+    homeLogo: ev.homeTeam?.id ? `/api/team-logo/${ev.homeTeam.id}` : null,
     awayTeam: ev.awayTeam?.name || 'Away',
     awayCrest: (ev.awayTeam?.shortName || ev.awayTeam?.name || 'AWY').slice(0, 3).toUpperCase(),
-    awayLogo: ev.awayTeam?.id ? `https://api.sofascore.com/api/v1/team/${ev.awayTeam.id}/image` : null,
+    awayLogo: ev.awayTeam?.id ? `/api/team-logo/${ev.awayTeam.id}` : null,
     homeScore: ev.homeScore?.current ?? null,
     awayScore: ev.awayScore?.current ?? null,
     venue: ev.venue?.name || '',
@@ -155,6 +155,25 @@ app.use(express.static(path.join(__dirname, 'public')));
 // One-shot fetch — useful for initial page load before SSE kicks in
 app.get('/api/live-matches', (req, res) => {
   res.json(cache);
+});
+
+// Proxy team logos through our own server so the browser never needs
+// the RapidAPI key directly (img tags can't send custom headers).
+app.get('/api/team-logo/:id', async (req, res) => {
+  try {
+    const imgRes = await fetch(`https://${RAPIDAPI_HOST}/api/v1/team/${req.params.id}/image`, {
+      headers: {
+        'x-rapidapi-key': RAPIDAPI_KEY,
+        'x-rapidapi-host': RAPIDAPI_HOST,
+      },
+    });
+    if (!imgRes.ok) return res.status(404).end();
+    res.set('Content-Type', imgRes.headers.get('content-type') || 'image/png');
+    res.set('Cache-Control', 'public, max-age=86400'); // logos don't change often
+    imgRes.body.pipe(res);
+  } catch (e) {
+    res.status(500).end();
+  }
 });
 
 // Live stream — browser keeps this connection open and receives pushes
