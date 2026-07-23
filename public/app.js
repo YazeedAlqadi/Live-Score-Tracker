@@ -7,6 +7,12 @@ const filterChips = document.querySelectorAll('.filter-chip');
 let currentFilter = 'ALL';
 let previousScores = {}; // matchId -> "home-away" string, used to detect changes
 
+// ---- Render a team logo image, falling back to initials if it fails ----
+function logoHTML(logoUrl, initials) {
+  if (!logoUrl) return initials;
+  return `<img src="${logoUrl}" alt="${initials}" width="20" height="20" style="border-radius:50%;object-fit:contain;" onerror="this.outerHTML='${initials}'">`;
+}
+
 // ---- Build one match card's HTML from a match object ----
 function matchCardHTML(m) {
   const isLive = m.status === 'LIVE';
@@ -42,12 +48,12 @@ function matchCardHTML(m) {
       </div>
       <div class="teams-row">
         <div class="team">
-          <div class="crest">${m.homeCrest}</div>
+          <div class="crest">${logoHTML(m.homeLogo, m.homeCrest)}</div>
           <div class="team-name">${m.homeTeam}</div>
         </div>
         ${scoreHTML}
         <div class="team right">
-          <div class="crest">${m.awayCrest}</div>
+          <div class="crest">${logoHTML(m.awayLogo, m.awayCrest)}</div>
           <div class="team-name">${m.awayTeam}</div>
         </div>
       </div>
