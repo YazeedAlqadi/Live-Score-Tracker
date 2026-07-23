@@ -7,9 +7,10 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS || 25000);
-const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'false';
+const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true';
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
-const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST || 'free-api-live-football-data.p.rapidapi.com';
+const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST || 'sportapi7.p.rapidapi.com';
+const FOOTBALL_CATEGORY_ID = 1; // confirmed by your own curl example
 
 // ---- In-memory cache -------------------------------------------------
 // This is the whole point of the polling loop: we hit the real API on
@@ -22,40 +23,44 @@ let cache = {
 // Clients currently listening for live updates (SSE connections)
 let sseClients = [];
 
-// ---- Normalize the RapidAPI response into our frontend's shape --------
-// NOTE: this API's exact field names weren't verifiable from outside —
-// I've mapped the most likely field names based on common patterns for
-// this kind of endpoint. If fields come back undefined, see the
-// console.log(JSON.stringify(...)) below: it prints one raw match the
-// first time data loads, so you can compare real field names against
-// this function and adjust the m.xxx paths to match.
-function normalizeMatch(m) {
-  const statusRaw = (m.status || m.matchStatus || '').toUpperCase();
+// ---- Normalize a SofaScore-style "event" into our frontend's shape ----
+// Known SofaScore field names (used by sportapi7 and similar clones):
+// event.status.type: "notstarted" | "inprogress" | "finished" | "postponed" etc.
+// event.homeTeam / event.awayTeam: { name, shortName }
+// event.homeScore.current / event.awayScore.current
+// event.tournament.name, event.startTimestamp (unix seconds)
+function normalizeMatch(ev) {
+  const statusType = (ev.status?.type || '').toLowerCase();
   let status = 'SCHEDULED';
-  if (statusRaw.includes('LIVE') || statusRaw.includes('PLAY') || statusRaw.includes('HT')) status = 'LIVE';
-  if (statusRaw.includes('FT') || statusRaw.includes('FINISH')) status = 'FT';
+  if (statusType.includes('progress')) status = 'LIVE';
+  if (statusType.includes('finish')) status = 'FT';
+  if (statusType.includes('notstarted') || statusType.includes('scheduled')) status = 'SCHEDULED';
 
-  const home = m.homeTeam || m.home || {};
-  const away = m.awayTeam || m.away || {};
+  const startDate = ev.startTimestamp ? new Date(ev.startTimestamp * 1000) : null;
 
   return {
-    id: String(m.id || m.matchId || m.fixtureId),
-    league: m.league?.name || m.competition?.name || m.tournamentName || 'Unknown league',
+    id: String(ev.id),
+    league: ev.tournament?.name || ev.tournament?.uniqueTournament?.name || 'Unknown league',
     status,
-    minute: m.minute || m.time || null,
-    homeTeam: home.name || home.shortName || 'Home',
-    homeCrest: (home.shortName || home.name || 'HOM').slice(0, 3).toUpperCase(),
-    awayTeam: away.name || away.shortName || 'Away',
-    awayCrest: (away.shortName || away.name || 'AWY').slice(0, 3).toUpperCase(),
-    homeScore: m.homeScore ?? home.score ?? null,
-    awayScore: m.awayScore ?? away.score ?? null,
-    venue: m.venue || m.stadium || '',
-    kickoff: m.startTime
-      ? new Date(m.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    minute: ev.time?.currentPeriodStartTimestamp
+      ? Math.max(0, Math.floor((Date.now() / 1000 - ev.time.currentPeriodStartTimestamp) / 60))
+      : (ev.statusTime || null),
+    homeTeam: ev.homeTeam?.name || 'Home',
+    homeCrest: (ev.homeTeam?.shortName || ev.homeTeam?.name || 'HOM').slice(0, 3).toUpperCase(),
+    awayTeam: ev.awayTeam?.name || 'Away',
+    awayCrest: (ev.awayTeam?.shortName || ev.awayTeam?.name || 'AWY').slice(0, 3).toUpperCase(),
+    homeScore: ev.homeScore?.current ?? null,
+    awayScore: ev.awayScore?.current ?? null,
+    venue: ev.venue?.name || '',
+    kickoffDate: startDate ? startDate.toDateString() : null,
+    kickoff: startDate
+      ? startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : null,
     lastEvent: null,
   };
 }
+
+let sampleLogged = false;
 
 // ---- Fetch fresh data (real API or mock file) -------------------------
 async function fetchMatches() {
@@ -69,34 +74,52 @@ async function fetchMatches() {
     return cache.matches;
   }
 
-  const res = await fetch(`https://${RAPIDAPI_HOST}/football-current-live`, {
-    headers: {
-      'x-rapidapi-key': RAPIDAPI_KEY,
-      'x-rapidapi-host': RAPIDAPI_HOST,
-    },
-  });
+  const headers = {
+    'x-rapidapi-key': RAPIDAPI_KEY,
+    'x-rapidapi-host': RAPIDAPI_HOST,
+  };
 
-  if (!res.ok) {
-    console.error(`RapidAPI error: ${res.status} ${res.statusText}`);
-    return cache.matches;
+  // Live matches
+  let rawLive = [];
+  try {
+    const liveRes = await fetch(`https://${RAPIDAPI_HOST}/api/v1/sport/football/events/live`, { headers });
+    if (liveRes.ok) {
+      const liveData = await liveRes.json();
+      rawLive = liveData.events || [];
+    } else {
+      console.error(`Live endpoint error: ${liveRes.status} ${liveRes.statusText}`);
+    }
+  } catch (e) {
+    console.error('Live fetch failed:', e.message);
   }
 
-  const data = await res.json();
-  // Confirmed shape from live testing: { status: "success", response: { live: [...] } }
-  const rawMatches = data.response?.live || data.response || data.data || data.matches || data;
-
-  if (!Array.isArray(rawMatches)) {
-    console.error('Unexpected response shape from RapidAPI. Raw response:', JSON.stringify(data).slice(0, 500));
-    return cache.matches;
+  // Today's scheduled matches — same pattern as your confirmed curl test
+  const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  let rawScheduled = [];
+  try {
+    const schedRes = await fetch(
+      `https://${RAPIDAPI_HOST}/api/v1/category/${FOOTBALL_CATEGORY_ID}/scheduled-events/${todayStr}`,
+      { headers }
+    );
+    if (schedRes.ok) {
+      const schedData = await schedRes.json();
+      rawScheduled = schedData.events || [];
+    } else {
+      console.error(`Scheduled endpoint error: ${schedRes.status} ${schedRes.statusText}`);
+    }
+  } catch (e) {
+    console.error('Scheduled fetch failed:', e.message);
   }
 
-  if (rawMatches.length > 0 && !cache.loggedSample) {
-    console.log('Sample raw match from API (compare field names to normalizeMatch):');
-    console.log(JSON.stringify(rawMatches[0], null, 2));
-    cache.loggedSample = true;
+  const allEvents = [...rawLive, ...rawScheduled];
+
+  if (allEvents.length > 0 && !sampleLogged) {
+    console.log('Sample raw event (compare field names to normalizeMatch):');
+    console.log(JSON.stringify(allEvents[0], null, 2));
+    sampleLogged = true;
   }
 
-  return rawMatches.map(normalizeMatch);
+  return allEvents.map(normalizeMatch);
 }
 
 // ---- Push the latest cache to every connected browser -----------------
@@ -109,11 +132,16 @@ function broadcast() {
 async function pollLoop() {
   try {
     const allMatches = await fetchMatches();
-    // Keep live and upcoming matches — drop only finished ones.
-    const relevant = allMatches.filter((m) => m.status === 'LIVE' || m.status === 'SCHEDULED');
+    const today = new Date().toDateString();
+    // Keep: any live match, and scheduled matches happening today only.
+    const relevant = allMatches.filter((m) => {
+      if (m.status === 'LIVE') return true;
+      if (m.status === 'SCHEDULED') return m.kickoffDate === today;
+      return false;
+    });
     cache = { matches: relevant, lastUpdated: new Date().toISOString() };
     broadcast();
-    console.log(`[${new Date().toLocaleTimeString()}] ${relevant.length} match(es) (live + upcoming)`);
+    console.log(`[${new Date().toLocaleTimeString()}] ${relevant.length} match(es) (live + today's upcoming)`);
   } catch (err) {
     console.error('Poll loop failed:', err.message);
   }
