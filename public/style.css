@@ -101,6 +101,18 @@ footer{
   font-family:'JetBrains Mono',monospace; margin-top:30px; letter-spacing:1px;
 }
 
+#site-footer {
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+  letter-spacing: 0.5px;
+  line-height: 1.6;
+}
+
 /* Brief highlight flash when a score changes */
 @keyframes score-flash{
   0%{ background:rgba(34,197,94,0.25); }
